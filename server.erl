@@ -3,10 +3,10 @@
 -behaviour(application).
 -behaviour(gen_server).
 
--export([start/2, stop/1]).                     % application
--export([init/1, code_change/3, handle_call/3, handle_cast/2, handle_info/2, terminate/2]). % gen_server
+-export([start/2, stop/1]).
+-export([init/1, code_change/3, handle_call/3, handle_cast/2, handle_info/2, terminate/2]).
 
--define(TCP_OPTIONS, [list, {packet, raw}, {reuseaddr, true}]).
+-define(TCP_OPTIONS, [binary, {packet, raw}, {reuseaddr, true}]).
 
 -record(state,
         {known_clients,

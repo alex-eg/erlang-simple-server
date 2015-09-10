@@ -24,7 +24,7 @@ handle_call(_Any, _From, State) ->
 handle_cast(wait_for_connection, _From, State) ->
     case gen_tcp:accept(ListenSocket) of
         {ok, Socket} ->
-            {ok, State#socket = Socket};
+            {ok, State#state.socket = Socket};
         {error, Reason} ->
             log:log("stop: accept socket error"),
             {stop, normal, State}
@@ -32,19 +32,30 @@ handle_cast(wait_for_connection, _From, State) ->
 handle_cast(_Any, _From, State) ->
     {noreply, State}.
 
+handle_info(?MSG(<<"name", Name/binary>>), State) ->
+    gen_server:cast(State#state.main_server, {client_connected, Name}),
+    {noreply, State};
+handle_info(?MSG(<<"send", NameAndMessage/binary>>), State) ->
+    [Name, Message] = binary:split(NameAndMessage, [<<0>>]),
+    gen_server:cast(State#state.main_server, {send_message, Name, Message}),
+    {noreply, State};
+handle_info() ->
+
+
 handle_info({tcp_closed, Socket}, State) ->
     log:log("stop: client closed connection"),
     {stop, normal, State};
-handle_info({tcp_error, Socket}, State) ->
-    log:log("stop: TCP error occured"),
+handle_info({tcp_error, Socket, Reason}, State) ->
+    log:log("stop: TCP error occured: ~p", [Reason]),
     {stop, normal, State};
 handle_info(_Any, State) ->
     {noreply, State}.
 
-terminate(accept_socket_error, State) ->
-    gen_server:cast(State#state.main_server, accept_server_errored),
-    ok;
 terminate(Reason, State) ->
     log:log("Worker gen_server terminated. Reason: ~p", [Reason]),
+    gen_server:cast(State#state.main_server, {server_worker_terminated, self()}),
     gen_tcp:close(State#state.socket),
     ok.
+
+code_change(_OldVersion, State, _Extra) ->
+    {ok, State}.
